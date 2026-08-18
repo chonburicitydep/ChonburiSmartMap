@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ระบบแผนที่ท่องเที่ยวอัจฉริยะ เทศบาลเมืองชลบุรี</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet-fullscreen@1.0.2/dist/leaflet.fullscreen.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #5551FF;
+            --restaurant-color: #FF0044;
+            --temple-color: #FF6600;
+            --parking-color: #0994de;
+            --gov-color: #00A6FF;
+            --cafe-color: #00C5CD;
+            --relax-color: #00bf63;
+            --legendaryrestaurant-color: #D4AF37; 
+            --bg-main: #FFE4E1;
+        }
+
+        * { box-sizing: border-box; }
+
+        body { 
+            margin: 0; padding: 20px; font-family: 'Sarabun', sans-serif; 
+            background-color: var(--bg-main); color: #334155;
+            height: 100vh; height: 100dvh; 
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        
+        .header-section { background: rgba(255, 255, 255, 0.95); padding: 12px 20px; border-radius: 16px; border: 2px solid #FFC0CB; margin-bottom: 15px; flex-shrink: 0;}
+        h2 { font-size: 24px; font-weight: 600; margin: 0 0 4px 0; color: #0F172A; }
+        .subtitle { font-size: 13px; color: #64748B; margin: 0; font-weight: 600; }
+
+        .filter-container { 
+            display: flex; 
+            gap: 8px; 
+            margin-bottom: 15px; 
+            flex-shrink: 0; 
+            overflow-x: auto; 
+            white-space: nowrap; 
+            padding-bottom: 5px; 
+            -webkit-overflow-scrolling: touch; 
+        }
+
+        .filter-container::-webkit-scrollbar {
+            display: none;
+        }
+        .btn-filter { padding: 10px 20px; border: 2px solid #FFC0CB; border-radius: 50px; background-color: #ffffff; color: #64748B; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+        .btn-filter:hover { transform: translateY(-2px); background-color: #FFF5F6; }
+        .btn-filter.active#btn-all { background: var(--primary); color: white; border-color: var(--primary); }
+        .btn-filter.active#btn-restaurant { background: var(--restaurant-color); color: white; border-color: var(--restaurant-color); }
+        .btn-filter.active#btn-temple { background: var(--temple-color); color: white; border-color: var(--temple-color); }
+        .btn-filter.active#btn-parking { background: var(--parking-color); color: white; border-color: var(--parking-color); }
+        .btn-filter.active#btn-government { background: var(--gov-color); color: white; border-color: var(--gov-color); }
+        .btn-filter.active#btn-cafe { background: var(--cafe-color); color: white; border-color: var(--cafe-color); }
+        .btn-filter.active#btn-relax { background: var(--relax-color); color: white; border-color: var(--relax-color); }
+        .btn-filter.active#btn-legendaryrestaurant { background: var(--legendaryrestaurant-color); color: white; border-color: var(--legendaryrestaurant-color); } 
+
+        .main-container { display: flex; flex: 1; gap: 15px; min-height: 0; }
+        .sidebar-left { width: 340px; background: rgba(255, 255, 255, 0.95); border-radius: 24px; border: 3px solid #FFFFFF; padding: 20px; display: flex; flex-direction: column; overflow-y: auto; }
+        .sidebar-title { font-size: 16px; font-weight: 700; color: #0F172A; margin-bottom: 12px; border-bottom: 2px dashed #FFC0CB; padding-bottom: 8px; }
+        #shop-list-container { overflow-y: auto; }
+        .shop-card { background: #FFFFFF; border: 2px solid #FFF0F5; border-radius: 14px; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease; }
+        .shop-card:hover { transform: translateX(5px); background: #FFF5F6; }
+        .shop-card-title { font-size: 14px; font-weight: 700; color: #1E293B; margin-bottom: 4px; }
+        .shop-card-desc { font-size: 12px; color: #64748B; line-height: 1.4; }
+        
+        .map-wrapper { flex: 1; position: relative; border-radius: 24px; border: 5px solid #FFFFFF; overflow: hidden; display: flex; flex-direction: column; }
+        #map { width: 100%; height: 100%; flex: 1; z-index: 1;}
+
+        .search-container { position: absolute; top: 15px; right: 15px; z-index: 1000; background: rgba(255, 255, 255, 0.95); padding: 6px 12px; border-radius: 50px; border: 2px solid #FF0044; width: 280px; }
+        .search-input { border: none; outline: none; background: transparent; font-family: 'Sarabun', sans-serif; font-size: 13px; font-weight: 600; width: 100%; }
+
+        .smart-router-box { background: #FFF5F6; border-radius: 12px; padding: 10px; margin-top: 8px; border: 1.5px dashed #FFB6C1; }
+        .category-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 50px; color: white; margin-top: 5px; }
+        
+        .modern-marker { display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 3px solid #FFFFFF; box-shadow: 0 6px 16px rgba(0,0,0,0.3); color: white; font-size: 18px; }
+
+        .btn-navigate {
+            display: block; width: 100%; text-align: center;
+            background-color: #4285F4; color: white !important;
+            padding: 8px 10px; border-radius: 8px; text-decoration: none;
+            font-size: 13px; font-weight: bold; margin-top: 10px;
+            transition: background 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .btn-navigate:hover { background-color: #3367D6; }
+
+        .btn-locate {
+            background: white; border: 2px solid rgba(0,0,0,0.2); border-radius: 4px;
+            width: 34px; height: 34px; cursor: pointer; font-size: 18px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-locate:hover { background: #f4f4f4; }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            h2 { font-size: 18px; }
+            
+            .btn-filter { 
+                padding: 6px 12px !important; 
+                font-size: 11px !important; 
+            }
+
+            .main-container {
+                flex-direction: column;
+            }
+
+            .map-wrapper {
+                order: 1; 
+                flex: 2;   
+                height: 420px; 
+            }
+
+            .sidebar-left {
+                order: 2; 
+                width: 100%;
+                flex: 1;
+                height: 250px;
+                border-radius: 20px;
+            }
+
+            .search-container {
+                width: 160px; 
+            }
+        }
+    </style>
+</head>
+<body>
+
+     <div class="header-section">
+        <!-- ใช้ Flexbox จัดให้โลโก้และข้อความเรียงต่อกันในแนวนอน และมีช่องว่าง (gap) 15px -->
+        <div style="display: flex; align-items: center; gap: 15px;">
+            
+            <!-- ใส่โลโก้ตรงนี้ (กำหนดขนาดกว้าง/สูงให้พอดีกับข้อความ) -->
+            <img src="Chon Logo.png" alt="โลโก้เทศบาล" style="width: 55px; height: 55px; object-fit: contain;">
+            
+            <!-- ส่วนของข้อความชื่อแผนที่และคำบรรยาย -->
+            <div>
+                <h2>ระบบแผนที่ท่องเที่ยวอัจฉริยะ เทศบาลเมืองชลบุรี</h2>
+                <p class="subtitle">รวมพิกัดกินเที่ยว ครบจบในที่เดียว✨</p>
+            </div>
+            
+        </div>
+    </div>
+
+    
+    <div class="filter-container">
+        <button class="btn-filter active" id="btn-all" onclick="toggleCategory('all')">✨ ทั้งหมด</button>
+        <button class="btn-filter" id="btn-restaurant" onclick="toggleCategory('restaurant')">🍲 ร้านเด็ด/ของกิน</button>
+        <button class="btn-filter" id="btn-legendaryrestaurant" onclick="toggleCategory('legendaryrestaurant')">🏷️ ร้านเก่าแก่</button> 
+        <button class="btn-filter" id="btn-relax" onclick="toggleCategory('relax')">🌳 สถานที่พักผ่อน</button>
+        <button class="btn-filter" id="btn-cafe" onclick="toggleCategory('cafe')">☕ Cafe</button>
+        <button class="btn-filter" id="btn-temple" onclick="toggleCategory('temple')">🛕 วัดและสิ่งศักดิ์สิทธิ์</button>
+        <button class="btn-filter" id="btn-parking" onclick="toggleCategory('parking')">🅿️ ที่จอดรถ</button>
+        <button class="btn-filter" id="btn-government" onclick="toggleCategory('government')">🏛️ หน่วยงานราชการ</button>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar-left">
+            <div class="sidebar-title" id="sidebar-dynamic-title">✨ สถานที่ทั้งหมดในเมืองชล</div>
+            <div id="shop-list-container"></div>
+        </div>
+
+        <div class="map-wrapper">
+            <div class="search-container">
+                <input type="text" class="search-input" id="search-input" placeholder="🔍 ค้นหาชื่อสถานที่..." oninput="searchLocation()">
+            </div>
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+    <script src="https://unpkg.com/leaflet-fullscreen@1.0.2/dist/Leaflet.fullscreen.min.js"></script>
+    <script>
+        var map = L.map('map', {
+            // ➕ เพิ่มการตั้งค่า Fullscreen ตรงนี้
+            fullscreenControl: true,
+            fullscreenControlOptions: {
+                position: 'topleft' // กำหนดให้ปุ่มอยู่ด้านซ้ายบน
+            }
+        }).setView([13.368, 100.984], 14.5);
+        
+        L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '© Google Maps'
+        }).addTo(map);
+
+        var locateControl = L.control({position: 'topleft'});
+        locateControl.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+            div.innerHTML = '<button class="btn-locate" onclick="map.locate({setView: true, maxZoom: 16})" title="ตำแหน่งของฉัน">🎯</button>';
+            return div;
+        };
+        locateControl.addTo(map);
+
+        var userMarker;
+        map.on('locationfound', function(e) {
+            if (userMarker) { map.removeLayer(userMarker); }
+            userMarker = L.circleMarker(e.latlng, {
+                radius: 8, fillColor: "#4285F4", color: "#fff", weight: 3, opacity: 1, fillOpacity: 0.9
+            }).addTo(map).bindPopup("📍 ตำแหน่งของคุณ").openPopup();
+        });
+        map.on('locationerror', function(e) {
+            alert("❌ ไม่สามารถระบุตำแหน่งของคุณได้ กรุณาเปิด GPS และอนุญาตการเข้าถึงตำแหน่ง");
+        });
+
+        var markersClusterGroup = L.markerClusterGroup({
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true,
+            disableClusteringAtZoom: 16, 
+            maxClusterRadius: 50          
+        });
+        map.addLayer(markersClusterGroup);
+
+        var locationsData = []; 
+        var markerObjects = {}; 
+        var routeLines = []; 
+        var activeCategories = []; 
+
+        var categoryNames = {
+            'all': '✨ สถานที่ทั้งหมดในเมืองชล', 
+            'restaurant': '🍲 ร้านเด็ด/ของกิน',
+            'cafe': '☕ Cafe', 
+            'temple': '🛕 วัด/สิ่งศักดิ์สิทธิ์',
+            'parking': '🅿️ สถานที่จอดรถ', 
+            'government': '🏛️ หน่วยงานราชการ',
+            'relax': '🌳 สถานที่พักผ่อน',
+            'legendaryrestaurant': '🏷️ ร้านเก่าแก่' 
+        };
+
+        function loadData() {
+            fetch('data.json')
+                .then(response => response.json())
+                .then(data => {
+                    locationsData = data;
+                    renderMarkers(); 
+                })
+                .catch(error => {
+                    console.error('Error loading data:', error);
+                    document.getElementById('shop-list-container').innerHTML = 
+                        '<div class="empty-message">❌ ไม่สามารถดึงข้อมูลได้ โปรดรันผ่าน Local Server</div>';
+                });
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            var R = 6371; 
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLon = (lon2 - lon1) * Math.PI / 180;
+            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; 
+        }
+
+        function checkCategoryMatch(itemCategory, activeCats) {
+        if (activeCats.length === 0) return true;
+    
+        for (var i = 0; i < activeCats.length; i++) {
+        var currentActive = activeCats[i];
+        // แยกเช็คแบบตรงหมวดหมู่ใครหมวดหมู่มัน 100%
+        if (itemCategory === currentActive) {
+            return true;
+        }
+    }
+    return false;
+}
+
+        // ฟังก์ชันช่วยจัดระเบียบคืนค่าลำดับคะแนนความสำคัญ (ให้ร้านเด็ดขึ้นก่อนร้านเก่าแก่)
+        function getCategoryPriority(category) {
+            if (category === 'restaurant') return 1;          // ร้านเด็ดขึ้นก่อนอันดับแรก
+            if (category === 'legendaryrestaurant') return 2; // ร้านเก่าแก่ตามหลังลงมา
+            return 3;                                         // หมวดหมู่อื่น ๆ
+        }
+
+        function updateSidebarList(filterKeyword = "") {
+            var container = document.getElementById('shop-list-container');
+            var titleElement = document.getElementById('sidebar-dynamic-title');
+            container.innerHTML = "";
+
+            if (activeCategories.length === 0) { 
+                titleElement.innerHTML = categoryNames['all']; 
+                titleElement.style.color = "#0F172A"; 
+            } else if (activeCategories.length === 1) { 
+                titleElement.innerHTML = "หมวดหมู่: " + categoryNames[activeCategories[0]]; 
+            } else { 
+                titleElement.innerHTML = "🗂️ รายการหมวดหมู่ที่คัดกรอง"; 
+                titleElement.style.color = "var(--primary)"; 
+            }
+
+            // ทำการโคลนและจัดเรียงข้อมูลให้เรียงลำดับร้านเด็ด (Priority 1) ขึ้นก่อนร้านเก่าแก่ (Priority 2)
+            var sortedData = [...locationsData].sort((a, b) => getCategoryPriority(a.category) - getCategoryPriority(b.category));
+
+            var hasData = false;
+            sortedData.forEach(function(item) {
+                var matchesCategory = checkCategoryMatch(item.category, activeCategories);
+                var matchesSearch = item.name.toLowerCase().includes(filterKeyword.toLowerCase()) || item.details.toLowerCase().includes(filterKeyword.toLowerCase());
+
+                if (matchesCategory && matchesSearch) {
+                    hasData = true;
+                    var card = document.createElement('div');
+                    card.className = "shop-card";
+                    card.innerHTML = `
+                        <div class="shop-card-title" style="color: ${item.color}">${item.icon || '📍'} ${item.name}</div>
+                        <div class="shop-card-desc">${item.details}</div>
+                    `;
+                    card.onclick = function() { focusOnMarker(item.id, item.lat, item.lng); };
+                    container.appendChild(card);
+                }
+            });
+
+            if (!hasData) { container.innerHTML = `<div class="empty-message">❌ ไม่พบสถานที่ที่ตรงกับเงื่อนไข</div>`; }
+        }
+
+        function focusOnMarker(id, lat, lng) {
+            map.flyTo([lat, lng], 17, { animate: true, duration: 1.5 });
+            clearRoutes();
+
+    // ลบลูปที่ใช้วาดเส้นพิกัด L.polyline เดิมออกทั้งหมด
+    setTimeout(function() { 
+        if (markerObjects[id]) { 
+            markerObjects[id].openPopup(); 
+        } 
+    }, 1500);
+}
+        function renderMarkers(filterKeyword = "") {
+            markersClusterGroup.clearLayers(); 
+            clearRoutes();
+            markerObjects = {};
+
+            locationsData.forEach(function(item) {
+                var matchesCategory = checkCategoryMatch(item.category, activeCategories);
+                var matchesSearch = item.name.toLowerCase().includes(filterKeyword.toLowerCase()) || item.details.toLowerCase().includes(filterKeyword.toLowerCase());
+
+                if (matchesCategory && matchesSearch) {
+                    var iconContent = item.category === "restaurant" ? `<span style="color: white; font-size: 16px;">🍲</span>` : (item.icon || "📍"); 
+                    var customIcon = L.divIcon({
+                        className: 'custom-modern-icon',
+                        html: `<div class="modern-marker" style="background-color: ${item.color}; width: 40px; height: 40px;">${iconContent}</div>`,
+                        iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -18]
+                    });
+
+                    var marker = L.marker([item.lat, item.lng], {icon: customIcon});
+                    markerObjects[item.id] = marker; 
+                    
+                    var popupHtml = "";
+                    var navUrl = `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`; 
+
+                    if (item.category === "parking") {
+                        var nearbyShopsHtml = "";
+                        var matchCount = 0;
+
+                        // จัดลำดับรายชื่อร้านค้าในป๊อปอัปจุดจอดรถ ให้ร้านเด็ดขึ้นก่อนร้านเก่าแก่เช่นกัน
+                        var sortedShops = [...locationsData].sort((a, b) => getCategoryPriority(a.category) - getCategoryPriority(b.category));
+
+                        sortedShops.forEach(function(shop) {
+                            if (shop.category === "restaurant" || shop.category === "legendaryrestaurant") {
+                                var distMeter = Math.round(calculateDistance(item.lat, item.lng, shop.lat, shop.lng) * 1000);
+                                if (distMeter <= 500) {
+                                    matchCount++;
+                                    var displayDist = distMeter >= 1000 ? (distMeter/1000).toFixed(2) + " กม." : distMeter + " ม.";
+                                    var walkMinutes = Math.ceil(distMeter / 70); 
+                                    nearbyShopsHtml += `<li style="font-size:12px; border-bottom:1px dashed #ddd; padding:4px 0;"><b>${shop.name}</b><br>📍 ห่าง ${displayDist} | 🏃 เดิน ~${walkMinutes} นาที</li>`;
+                                }
+                            }
+                        });
+
+                        popupHtml = `
+                            <div style="font-weight:700; font-size:14px; margin-bottom:4px;">🚗 ${item.name}</div>
+                            <div style="font-size:12px; color:#475569; margin-bottom:6px;">${item.details}</div>
+                            <div class="smart-router-box">
+                                <div style="font-size:12px; font-weight:700; color:#FF0044;">⚡ ร้านอร่อย/เก่าแก่ในระยะ 500 ม. (${matchCount} ร้าน)</div>
+                                <ul style="margin: 5px 0 0; padding-left: 15px; max-height:100px; overflow-y:auto;">${nearbyShopsHtml || "<li>ไม่มีร้านค้าระยะใกล้</li>"}</ul>
+                            </div>
+                            <a href="${navUrl}" target="_blank" class="btn-navigate">🚗 นำทางด้วย Google Maps</a>
+                        `;
+                        marker.on('click', function() { focusOnMarker(item.id, item.lat, item.lng); });
+                    } else {
+                        popupHtml = `
+                            <div style="font-weight:700; font-size:14px; margin-bottom:4px;">${item.name}</div>
+                            <div style="font-size:12px; color:#475569; margin-bottom:6px;">${item.details}</div>
+                            <span class="category-tag" style="background-color: ${item.color};">${item.taglabel || ''}</span>
+                            <a href="${navUrl}" target="_blank" class="btn-navigate">🚗 นำทางด้วย Google Maps</a>
+                        `;
+                        marker.on('click', clearRoutes);
+                    }
+
+                    marker.bindPopup(popupHtml);
+                    markersClusterGroup.addLayer(marker); 
+                }
+            });
+            updateSidebarList(filterKeyword);
+        }
+
+        function searchLocation() {
+            var keyword = document.getElementById('search-input').value;
+            renderMarkers(keyword);
+        }
+
+        function clearRoutes() {
+            routeLines.forEach(function(line) { map.removeLayer(line); });
+            routeLines = [];
+        }
+
+        map.on('click', clearRoutes);
+
+        function toggleCategory(category) {
+    var btnAll = document.getElementById('btn-all');
+    document.getElementById('search-input').value = ""; 
+    
+    // รีเซ็ตคลาส active ของปุ่มทั้งหมดก่อน
+    document.querySelectorAll('.btn-filter').forEach(function(btn) { 
+        btn.classList.remove('active'); 
+    });
+    
+    if (category === 'all') {
+        activeCategories = [];
+        btnAll.classList.add('active');
+    } else {
+        // บังคับให้เป็นแบบเลือกได้ทีละหมวดหมู่เดี่ยว ๆ (Single-select)
+        activeCategories = [category]; 
+        var clickedBtn = document.getElementById('btn-' + category);
+        if (clickedBtn) {
+            clickedBtn.classList.add('active');
+        }
+    }
+    renderMarkers();
+    }
+
+        loadData();
+    </script>
+</body>
+</html>
